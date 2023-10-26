@@ -1,64 +1,71 @@
-import { REST, Routes, Client, GatewayIntentBits } from 'discord.js';
+import { ChannelType, Client, Events, GatewayIntentBits, PermissionFlagsBits, } from 'discord.js';
 
-const commands = [
-  {
-    name: 'developer',
-    description: 'Discord-bot Github Repository',
-  },
-];
-
-// DISCORD 내 BOT TOKEN을 setToken의 인수로 넣어주세요.
-const rest = new REST({ version: '10' }).setToken('TOKEN');
-
-try {
-  console.log('Started refreshing application (/) commands.');
-
-  // SETTINGS - General Information - APPLICATION ID를 applicationCommands의 인수로 넣어주세요.
-  await rest.put(Routes.applicationCommands('APP_ID'), { body: commands });
-
-  console.log('Successfully reloaded application (/) commands.');
-} catch (error) {
-  console.error(error);
-}
-
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,],
+  // application: {guildId : '1079404838925893705'},
+});
 
 client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+  console.log('준비되었습니다!');
 });
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'developer') {
-    await interaction.reply('https://github.com/woowacourse-bot/discord-bot');
+const getTypesFromMessage = (str) => {
+  switch (str) {
+    case 't':
+      return ChannelType.GuildText;
+    case 'v':
+      return ChannelType.GuildVoice;
+    case 'f':
+      return ChannelType.GuildForum;
   }
-});
+}
 
-client.on('channelCreate', async (channel) => {
-  try {
-    // 채널을 만든 사용자의 정보를 가져옵니다.
-    const logs = await channel.guild.fetchAuditLogs({
-      limit: 1,
-      type: 10,
-    });
+client.on(Events.MessageCreate, async message => {
+  console.log("메세지 생성됨");
+  // console.log(message.channel.parentId,);
 
-    const creatorId = logs.entries.first().executor.id;
-    const creator = await channel.guild.members.fetch(creatorId);
+  if (message.content.startsWith('-cc')) {
 
-    // 생성자에게만 'MANAGE_CHANNELS' 권한 부여
-    await channel.permissionOverwrites.edit(creator.id, {
-      ManageChannels: true,
-    });
+    const [_, name, type] = message.content.split(' ');
+    const channelType = await getTypesFromMessage(type)
+    console.log(name, type, channelType);
 
-    // @everyone에 대한 'MANAGE_CHANNELS' 권한 제거
-    await channel.permissionOverwrites.edit(channel.guild.roles.everyone, {
-      ManageChannels: false,
-    });
-  } catch (error) {
-    console.error('Error setting permissions:', error);
+    const newChannel = message.guild.channels.create({
+      name: name,
+      parent: message.channel.parentId,
+      type: channelType,
+      PermissionOverwrites: [
+        {
+          id: message.author.id,
+          deny: [PermissionFlagsBits.ViewChannel]
+        },
+      ],
+    })
+    console.log(message.author.id);
+    console.log('permission!!!!');
+    console.log((await newChannel).permissionOverwrites);
+
+    message.reply(`CREATE : ${message.author} 님이 "${(await newChannel).name}"(${(await newChannel).id}) 를 만들었습니다!`)
   }
+
+
+  // if (message.content.startsWith('-dc')) {
+
+  //   const [_, name] = message.content.split(' ');
+
+  //   if (message.author.id)
+  //   const deletedChannel = message.guild.channels.delete(
+  //     //channelID
+  //   )
+
+  //   message.reply(`DELETE : ${message.author} 님이 ${(await deletedChannel).name}(${(await deletedChannel).id}) 를 만들었습니다!`)
+  // }
+
 });
 
-// DISCORD 내 BOT TOKEN을 setToken의 인수로 넣어주세요.
-client.login('TOKEN');
+client.login('MTE2NzAwOTc0ODkyMzcyMzc4Nw.GsFiVR.t61AxYLczpxfkGHXZwaFNKDVa2icWrgayyjy2Y');
+
